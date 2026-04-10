@@ -1,9 +1,4 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-name: MSBuild
+name: MSBuild C++
 
 on:
   push:
@@ -12,13 +7,9 @@ on:
     branches: [ "main" ]
 
 env:
-  # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: .
-
-  # Configuration type to build.
-  # You can convert this to a build matrix if you need coverage of multiple configuration types.
-  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
   BUILD_CONFIGURATION: Release
+  BUILD_PLATFORM: x64          # Change to Win32 / ARM64 if needed
+  SOLUTION_OR_PROJECT: .       # Use your .sln or .vcxproj file here, e.g. "MyProject.vcxproj"
 
 permissions:
   contents: read
@@ -28,13 +19,25 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v3   # Updated to v3
 
-    - name: Build
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Add additional options to the MSBuild command line here (like platform or verbosity level).
-      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild  /ifcOutput ".\build\trash\" /GS- /GL /W3 /Gy /Zc:wchar_t /Zi /Gm- /O2 /sdl /Fd".\build\trash\vc143.pdb" /Zc:inline /fp:precise /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /errorReport:prompt /WX- /Zc:forScope /Gd /Oi /MD /std:c++20 /FC /Fa".\build\trash\" /EHsc /nologo /Fo".\build\trash\" /Fp".\build\trash\telepathy.pch" /diagnostics:column 
+      - name: Create build directory
+        run: mkdir -p build\trash
+
+      - name: Build
+        working-directory: ${{ github.workspace }}
+        run: |
+          msbuild "${{ env.SOLUTION_OR_PROJECT }}" `
+            /p:Configuration=${{ env.BUILD_CONFIGURATION }} `
+            /p:Platform=${{ env.BUILD_PLATFORM }} `
+            /p:OutDir=build\trash\ `
+            /p:IntDir=build\trash\ `
+            /m `
+            /nologo `
+            /verbosity:minimal `
+            /p:UseMultiToolTask=true `
+            /p:EnforceProcessCountAcrossBuilds=true
